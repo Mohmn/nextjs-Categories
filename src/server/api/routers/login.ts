@@ -9,9 +9,8 @@ export const loginRouter = createTRPCRouter({
   create: publicProcedure
     .input(z.object(
       {
-        email: z.string().email(),
-        password: z.string().min(8),
-        // passsword
+        email: z.string().email({ message: "invalid email id." }),
+        password: z.string().min(8, { message: "password is too short to be valid." }),
 
       }))
     .mutation(async ({ ctx, input, }) => {
@@ -21,18 +20,17 @@ export const loginRouter = createTRPCRouter({
         }
       })
 
-      console.log('user', user);
 
       if (!user)
         throw new TRPCError({
           code: 'BAD_REQUEST',
-          message: 'email or password not correct',
+          message: 'email:email or password not correct',
         })
 
       if (! await verifyPassword(input.password, user.password))
         throw new TRPCError({
           code: 'BAD_REQUEST',
-          message: 'email or password not correct',
+          message: 'email:email or password not correct',
         })
 
 

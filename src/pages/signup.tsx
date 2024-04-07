@@ -1,7 +1,7 @@
 import InputField from "~/components/InputField";
 import CustomButton from "~/components/Button";
 import Navbar from "~/components/Navbar";
-import { type FormEvent } from "react";
+import { useState, type FormEvent } from "react";
 import { api } from "~/utils/api";
 import { TRPCClientError } from "@trpc/client";
 import { useRouter } from 'next/router';
@@ -9,24 +9,37 @@ import Link from 'next/link';
 
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-// function checkError(error: any, pathToCheck: string) {
+function extractErrorMessages(error: TRPCClientError<any>): Record<string, string> {
+    const errorsMap: Record<string, string> = {};
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+    try {
+        const errorMessages = JSON.parse(error.message) as object;
+        // Check if error is an array and iterate through it
+        Object.values(errorMessages).forEach((e) => {
+            console.log('error', e)
+            // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
+            const key = e.path[0];
+            // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
+            errorsMap[key] = e.message;
+        });
 
-//     if(error instanceof TRPCClientError) {
-//         if(Array.isArray(error)) {
-//             const error.includes(e => e.path.includes(pathToCheck))
-//         }
-//     }
+        return errorsMap;
+    } catch (e) {
+        const [key, val] = error.message.split(':')
+        if (key && val)
+            errorsMap[key] = val
+    }
 
-// } 
+
+    return errorsMap;
+}
 function SignupForm() {
 
     const router = useRouter();
 
-    const signupQuery = api.signup.create.useMutation({
-        onSuccess: async () => {
-            await router.push('/login');
-        }
-    })
+    const signupQuery = api.signup.create.useMutation()
+
+    const [errors, setErrors] = useState<Record<string, string>>({});
 
 
     const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
@@ -37,19 +50,17 @@ function SignupForm() {
         const username = formData.get('username') as string;
         console.log('fomdata', email, password, username)
         try {
-            signupQuery.mutate({
+            await signupQuery.mutateAsync({
                 email: email,
                 password: password,
                 username: username,
             },
             );
+            await router.push('/login');
             // If successful, you might want to redirect the user or clear the form
         } catch (error) {
             if (error instanceof TRPCClientError)
-                console.log('error', error.message)
-            else console.log('erro2r', error)
-            // Assuming the error object has a message property
-            // setServerError(error.response?.data?.message || "An error occurred. Please try again.");
+                setErrors(extractErrorMessages(error))
         }
     };
     return (
@@ -58,9 +69,31 @@ function SignupForm() {
             <div className="max-w-xl mx-auto mt-5 max-h-fit">
                 <form onSubmit={handleSubmit} className="border-gray border-2 border-rad shadow-lg rounded-[20px] px-8 pt-6 pb-8 mb-4">
                     <h1 className="text-xl font-bold mb-2 text-center">Create your account</h1>
-                    <InputField name="username" label="Name" placeholder="Enter" required minLength={4} />
-                    <InputField name="email" label="Email" type="email" placeholder="Enter" required />
-                    <InputField name="password" label="Password" type="password" placeholder="Enter" required minLength={8} />
+                    <InputField
+                        name="username"
+                        label="Name"
+                        placeholder="Enter"
+                        required
+                        minLength={4}
+                        error={errors.username ?? ''}
+                    />
+                    <InputField
+                        name="email"
+                        label="Email"
+                        type="email"
+                        placeholder="Enter"
+                        required
+                        error={errors.email ?? ''}
+                    />
+                    <InputField
+                        name="password"
+                        label="Password"
+                        type="password"
+                        placeholder="Enter"
+                        required
+                        minLength={8}
+                        error={errors.password ?? ''}
+                    />
                     <div className="flex items-center justify-between mt-4">
                         <CustomButton type="submit">
                             Create Account

@@ -23,7 +23,7 @@ export const signupRouter = createTRPCRouter({
       if (emailTaken)
         throw new TRPCError({
           code: 'BAD_REQUEST',
-          message: 'email already taken: email',
+          message: 'email:email is already taken',
 
         })
       return await ctx.db.user.create({
